@@ -14,6 +14,14 @@
 #define QCOM_SCM_RM_MANAGED_VMID	0x3A
 #define QCOM_SCM_MAX_MANAGED_VMID	0x3F
 
+static u16 qcom_scm_map_vmid(u16 vmid)
+{
+	if (vmid <= QCOM_SCM_MAX_MANAGED_VMID)
+		return vmid;
+
+	return QCOM_SCM_RM_MANAGED_VMID;
+}
+
 static void qcom_scm_gh_pin_pages(phys_addr_t phys_addr, size_t size)
 {
 	struct page *page = pfn_to_page(__phys_to_pfn(phys_addr));
@@ -29,7 +37,11 @@ static int qcom_scm_gh_rm_pre_mem_share(void *rm, struct gh_rm_mem_parcel *mem_p
 	struct qcom_scm_vmperm *new_perms;
 	u64 src, src_cpy;
 	int ret = 0, i, n, rb_ret;
-	u16 vmid;
+	u16 self_vmid, vmid;
+
+	ret = gh_rm_get_vmid(rm, &self_vmid);
+	if (ret)
+		return ret;
 
 	new_perms = kcalloc(mem_parcel->n_acl_entries, sizeof(*new_perms), GFP_KERNEL);
 	if (!new_perms)
@@ -37,10 +49,7 @@ static int qcom_scm_gh_rm_pre_mem_share(void *rm, struct gh_rm_mem_parcel *mem_p
 
 	for (n = 0; n < mem_parcel->n_acl_entries; n++) {
 		vmid = le16_to_cpu(mem_parcel->acl_entries[n].vmid);
-		if (vmid <= QCOM_SCM_MAX_MANAGED_VMID)
-			new_perms[n].vmid = vmid;
-		else
-			new_perms[n].vmid = QCOM_SCM_RM_MANAGED_VMID;
+		new_perms[n].vmid = qcom_scm_map_vmid(vmid);
 		if (mem_parcel->acl_entries[n].perms & GH_RM_ACL_X)
 			new_perms[n].perm |= QCOM_SCM_PERM_EXEC;
 		if (mem_parcel->acl_entries[n].perms & GH_RM_ACL_W)
@@ -49,7 +58,7 @@ static int qcom_scm_gh_rm_pre_mem_share(void *rm, struct gh_rm_mem_parcel *mem_p
 			new_perms[n].perm |= QCOM_SCM_PERM_READ;
 	}
 
-	src = BIT_ULL(QCOM_SCM_VMID_HLOS);
+	src = BIT_ULL(qcom_scm_map_vmid(self_vmid));
 
 	for (i = 0; i < mem_parcel->n_mem_entries; i++) {
 		src_cpy = src;
@@ -66,12 +75,13 @@ static int qcom_scm_gh_rm_pre_mem_share(void *rm, struct gh_rm_mem_parcel *mem_p
 	src = 0;
 	for (n = 0; n < mem_parcel->n_acl_entries; n++) {
 		vmid = le16_to_cpu(mem_parcel->acl_entries[n].vmid);
-		if (vmid <= QCOM_SCM_MAX_MANAGED_VMID)
-			src |= BIT_ULL(vmid);
-		else
-			src |= BIT_ULL(QCOM_SCM_RM_MANAGED_VMID);
+		src |= BIT_ULL(qcom_scm_map_vmid(vmid));
 	}
 
+	/*
+	 * Memory originates from the host side, but reclaim still needs to hand
+	 * ownership back to HLOS, not the caller's RM VMID.
+	 */
 	new_perms[0].vmid = QCOM_SCM_VMID_HLOS;
 
 	for (i--; i >= 0; i--) {
@@ -109,10 +119,7 @@ static int qcom_scm_gh_rm_post_mem_reclaim(void *rm, struct gh_rm_mem_parcel *me
 
 	for (n = 0; n < mem_parcel->n_acl_entries; n++) {
 		vmid = le16_to_cpu(mem_parcel->acl_entries[n].vmid);
-		if (vmid <= QCOM_SCM_MAX_MANAGED_VMID)
-			src |= (1ull << vmid);
-		else
-			src |= (1ull << QCOM_SCM_RM_MANAGED_VMID);
+		src |= BIT_ULL(qcom_scm_map_vmid(vmid));
 	}
 
 	for (i = 0; i < mem_parcel->n_mem_entries; i++) {
