@@ -1,0 +1,42 @@
+diff --git a/oplus/oplus_chg/oplus-chg-23814-silicon-1.dtsi b/oplus/oplus_chg/oplus-chg-23814-silicon-1.dtsi
+index d0c4fe0..1b4f363 100644
+--- a/oplus/oplus_chg/oplus-chg-23814-silicon-1.dtsi
++++ b/oplus/oplus_chg/oplus-chg-23814-silicon-1.dtsi
+@@ -332,11 +332,11 @@
+ 		/* first data is strategy used temp type */
+ 		oplus,general_strategy_name = "cgcl";
+ 		oplus,general_strategy_data = < OPLUS_STRATEGY_USE_SHELL_TEMP
+-						0   380 CURR_LIMIT_7BIT_9_5A 1 0
+-						370 400 CURR_LIMIT_7BIT_7_0A 2 0
+-						390 420 CURR_LIMIT_7BIT_5_0A 3 1
+-						410 430 CURR_LIMIT_7BIT_4_0A 4 2
+-						420 440 CURR_LIMIT_7BIT_3_0A 4 3 >;
++						0   430 CURR_LIMIT_7BIT_9_5A 1 0
++						420 450 CURR_LIMIT_7BIT_7_0A 2 0
++						440 470 CURR_LIMIT_7BIT_5_0A 3 1
++						460 480 CURR_LIMIT_7BIT_4_0A 4 2
++						470 490 CURR_LIMIT_7BIT_3_0A 4 3 >;
+ 	};
+ };
+ 
+diff --git a/oplus/oplus_chg/oplus-chg-23814.dtsi b/oplus/oplus_chg/oplus-chg-23814.dtsi
+index 41c4316..d9a4389 100644
+--- a/oplus/oplus_chg/oplus-chg-23814.dtsi
++++ b/oplus/oplus_chg/oplus-chg-23814.dtsi
+@@ -424,11 +424,11 @@
+ 		/* first data is strategy used temp type */
+ 		oplus,general_strategy_name = "cgcl";
+ 		oplus,general_strategy_data = < OPLUS_STRATEGY_USE_SHELL_TEMP
+-						0   380 CURR_LIMIT_7BIT_9_5A 1 0
+-						370 400 CURR_LIMIT_7BIT_7_0A 2 0
+-						390 420 CURR_LIMIT_7BIT_5_0A 3 1
+-						410 430 CURR_LIMIT_7BIT_4_0A 4 2
+-						420 440 CURR_LIMIT_7BIT_3_0A 4 3 >;
++						0   430 CURR_LIMIT_7BIT_9_5A 1 0
++						420 450 CURR_LIMIT_7BIT_7_0A 2 0
++						440 470 CURR_LIMIT_7BIT_5_0A 3 1
++						460 480 CURR_LIMIT_7BIT_4_0A 4 2
++						470 490 CURR_LIMIT_7BIT_3_0A 4 3 >;
+ 
+ 		oplus,plc_strategy-data = <&buck_simple_strategy &cp_2t1_simple_strategy &cp_1t1_simple_strategy>;
+ 		oplus,plc_strategy-names = "default", "svooc", "vooc";
