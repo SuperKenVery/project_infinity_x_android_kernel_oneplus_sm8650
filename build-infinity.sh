@@ -24,6 +24,7 @@ BUILD_TOOLS_REPO="https://github.com/LineageOS/android_prebuilts_build-tools.git
 BUILD_TOOLS_COMMIT="f61cfbcb609173e1040753a2b9e8fbe8517343f9"
 KERNEL_BUILD_TOOLS_REPO="https://github.com/pa-gr/android_kernel_prebuilts_build-tools.git"
 KERNEL_BUILD_TOOLS_COMMIT="9c54986137a5f2215d7f977f4f9d1c22773d3892"
+DEVICE_TREE_PATCH="${KERNEL_DIR}/patches/0001-corvette-fastcharge-shell-temp-plus-5c.patch"
 
 die() {
     printf 'error: %s\n' "$*" >&2
@@ -96,6 +97,17 @@ clone_sparse_repo() {
     git -C "${destination}" checkout --detach -q FETCH_HEAD
 }
 
+apply_device_tree_patch() {
+    if git -C "${DEVICETREES_DIR}" apply --reverse --check "${DEVICE_TREE_PATCH}" >/dev/null 2>&1; then
+        printf 'Using patched SM8650 device trees\n'
+        return
+    fi
+
+    git -C "${DEVICETREES_DIR}" apply --check "${DEVICE_TREE_PATCH}" \
+        || die "device-tree patch no longer applies cleanly"
+    git -C "${DEVICETREES_DIR}" apply "${DEVICE_TREE_PATCH}"
+}
+
 setup_environment() {
     [[ "$(uname -s)" == Linux ]] || die "only a Linux build host is supported"
     [[ "$(uname -m)" == x86_64 ]] || die "the pinned Android prebuilts require an x86_64 host"
@@ -107,6 +119,7 @@ setup_environment() {
 
     clone_full_repo "SM8650 modules" "${MODULES_REPO}" "${MODULES_COMMIT}" "${MODULES_DIR}"
     clone_full_repo "SM8650 device trees" "${DEVICETREES_REPO}" "${DEVICETREES_COMMIT}" "${DEVICETREES_DIR}"
+    apply_device_tree_patch
     clone_full_repo "Android Clang r547379" "${CLANG_REPO}" "${CLANG_COMMIT}" "${CLANG_DIR}" 1
     clone_sparse_repo "Android build tools" "${BUILD_TOOLS_REPO}" "${BUILD_TOOLS_COMMIT}" "${BUILD_TOOLS_DIR}" \
         '/linux-x86/bin/flex' \
@@ -196,11 +209,20 @@ build_kernel() {
     sha256sum "${image}"
 }
 
+build_device_trees() {
+    local dtbo="${OUT_DIR}/arch/arm64/boot/dts/vendor/oplus/corvette-23814-pineapple-overlay.dtbo"
+
+    run_make -j"${JOBS}" dtbs
+    [[ -f "${dtbo}" ]] || die "build completed without producing ${dtbo}"
+    file "${dtbo}"
+    sha256sum "${dtbo}"
+}
+
 usage() {
     printf 'Usage: %s [setup|config|build]\n' "${0##*/}"
     printf '  setup   fetch the pinned companion repositories and toolchains\n'
     printf '  config  setup and regenerate the Infinity X corvette .config\n'
-    printf '  build   setup, regenerate .config, and build Image (default)\n'
+    printf '  build   setup, regenerate .config, and build Image plus corvette DTBO (default)\n'
 }
 
 action="${1:-build}"
@@ -218,6 +240,7 @@ case "${action}" in
         export_build_environment
         configure_kernel
         build_kernel
+        build_device_trees
         ;;
     -h|--help|help)
         usage
